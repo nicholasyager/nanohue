@@ -6,23 +6,19 @@ use reqwest::Response;
 use super::types::{Group, Light};
 
 pub struct Hue {
-    username: String,
-    client_key: String,
+    // username: String,
+    // client_key: String,
     base_url: String,
     client: reqwest::Client,
 }
 
 impl Hue {
-    pub fn new(
-        hostname: String,
-        username: String,
-        client_key: String,
-    ) -> Result<Hue, reqwest::Error> {
+    pub fn new(hostname: String, username: String) -> Result<Hue, reqwest::Error> {
         let client = reqwest::Client::builder().build()?;
         let base_url = format!("http://{}/api/{}", hostname, username);
         Ok(Hue {
-            username,
-            client_key,
+            // username,
+            // client_key,
             client,
             base_url,
         })

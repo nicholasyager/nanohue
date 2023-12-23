@@ -24,7 +24,6 @@ struct HueConfig {
     host: String,
     group: String,
     username: String,
-    client_key: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,7 +46,7 @@ fn read_config(path: &str) -> Result<NanoHueConfig, Box<dyn std::error::Error>> 
 }
 
 fn get_group(groups: HashMap<String, Group>, name: &str) -> Option<Group> {
-    for (key, iter_group) in groups {
+    for (_, iter_group) in groups {
         if iter_group.name == name {
             println!("Found it! {:?}", iter_group);
             return Some(iter_group);
@@ -71,8 +70,7 @@ async fn main() {
 
     let config = read_config("config.yml").unwrap();
 
-    let hue_client =
-        hue::client::Hue::new(config.hue.host, config.hue.username, config.hue.client_key).unwrap();
+    let hue_client = hue::client::Hue::new(config.hue.host, config.hue.username).unwrap();
 
     let groups = hue_client.groups().await.unwrap();
 

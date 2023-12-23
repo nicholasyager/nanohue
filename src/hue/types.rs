@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use simplelog::Color;
 
 use crate::color::{ColorCoordinate, ColorGamut};
 
@@ -77,7 +76,3 @@ pub struct Group {
     pub group_type: String,
     pub action: GroupActions,
 }
-
-// impl Light {
-//     pub fn xy_to_hsv(&self) -> HSVColor {}
-// }
