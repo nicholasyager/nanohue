@@ -4,6 +4,8 @@ extern crate simplelog;
 
 use std::{collections::HashMap, thread, time};
 
+use color::Palette;
+use hue::client::Hue;
 use log::LevelFilter;
 use serde::Deserialize;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
@@ -55,6 +57,32 @@ fn get_group(groups: HashMap<String, Group>, name: &str) -> Option<Group> {
     None
 }
 
+async fn get_palette(hue_client: &Hue, group: &Group) -> Palette {
+    // Get all lights, and filter them down to just the ones we care about.
+    let all_lights = hue_client.lights().await.unwrap();
+
+    let group_lights: Vec<&Light> = group
+        .lights
+        .iter()
+        .map(|light| all_lights.get(light).unwrap())
+        .collect();
+
+    println!("{:?}", group_lights);
+
+    let mut palette = Palette::new();
+
+    for light in group_lights {
+        let color_coordinates = light.state.xy.unwrap();
+        let color_gamut = light.capabilities.control.color_gamut.unwrap();
+        let brightness = light.state.brightness;
+
+        let color = RGBColor::from_coordinate(color_coordinates, color_gamut, brightness);
+        palette.insert(color.to_hsv());
+    }
+
+    palette
+}
+
 #[tokio::main]
 async fn main() {
     CombinedLogger::init(vec![
@@ -83,30 +111,34 @@ async fn main() {
         on: group.action.on,
         brightness: group.action.brightness,
         dynamic: false,
+        palette: None,
     };
 
     loop {
         trace!(target: "nanohue", "Looping");
 
-        // Get all lights, and filter them down to just the ones we care about.
-        let all_lights = hue_client.lights().await.unwrap();
+        let palette = get_palette(&hue_client, &group).await;
+        println!("{:?}", palette);
 
-        let group_lights: Vec<&Light> = group
-            .lights
-            .iter()
-            .map(|light| all_lights.get(light).unwrap())
-            .collect();
+        // // Get all lights, and filter them down to just the ones we care about.
+        // let all_lights = hue_client.lights().await.unwrap();
 
-        println!("{:?}", group_lights);
+        // let group_lights: Vec<&Light> = group
+        //     .lights
+        //     .iter()
+        //     .map(|light| all_lights.get(light).unwrap())
+        //     .collect();
 
-        for light in group_lights {
-            let color_coordinates = light.state.xy.unwrap();
-            let color_gamut = light.capabilities.control.color_gamut.unwrap();
-            let brightness = light.state.brightness;
+        // println!("{:?}", group_lights);
 
-            let color = RGBColor::from_coordinate(color_coordinates, color_gamut, brightness);
-            println!("{:?}", color);
-        }
+        // for light in group_lights {
+        //     let color_coordinates = light.state.xy.unwrap();
+        //     let color_gamut = light.capabilities.control.color_gamut.unwrap();
+        //     let brightness = light.state.brightness;
+
+        //     let color = RGBColor::from_coordinate(color_coordinates, color_gamut, brightness);
+        //     println!("{:?}", color);
+        // }
 
         // Pause briefly to prevent overloading the nanoleaf.
         let ten_millis = time::Duration::from_millis(1000);

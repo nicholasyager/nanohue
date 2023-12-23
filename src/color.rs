@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -6,7 +8,7 @@ pub struct ColorCoordinate {
     y: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct HSVColor {
     hue: u32,
     saturation: u8,
@@ -19,6 +21,33 @@ fn gamma_correction(x: f32) -> f32 {
     }
 
     (1.0 + 0.055) * f32::powf(x, 1.0 / 2.4) - 0.055
+}
+
+fn max(values: Vec<f32>) -> f32 {
+    let max_value: Option<f32> = values.iter().copied().fold(None, |max, current| match max {
+        Some(max) => Some(max.max(current)),
+        None => Some(current),
+    });
+
+    match max_value {
+        Some(max) => max,
+        None => panic!("No max?!?"),
+    }
+}
+
+fn min(values: Vec<f32>) -> f32 {
+    let min_value: Option<f32> = values
+        .iter()
+        .copied()
+        .fold(None, |min, current: f32| match min {
+            Some(min) => Some(min.min(current)),
+            None => Some(current),
+        });
+
+    match min_value {
+        Some(min) => min,
+        None => panic!("No min?!?"),
+    }
 }
 
 #[derive(Debug)]
@@ -82,6 +111,54 @@ impl RGBColor {
             red: (r * 255.0).clamp(0.0, 255.0) as u8,
             green: (g * 255.0).clamp(0.0, 255.0) as u8,
             blue: (b * 255.0).clamp(0.0, 255.0) as u8,
+        }
+    }
+
+    pub fn to_hsv(&self) -> HSVColor {
+        // R, G, B values are divided by 255
+        // to change the range from 0..255 to 0..1:
+        let r = self.red as f32 / 255_f32;
+        let g = self.green as f32 / 255_f32;
+        let b = self.blue as f32 / 255_f32;
+
+        // h, s, v = hue, saturation, value
+        let cmax = max(vec![r, g, b]);
+        let cmin = min(vec![r, g, b]);
+        let diff = cmax - cmin;
+
+        let mut h = 0_f32;
+
+        // if cmax and cmax are equal then h = 0
+        if cmax == cmin {
+            h = 0_f32;
+        }
+        // if cmax equal r then compute h
+        else if cmax == r {
+            h = (60_f32 * ((g - b) / diff) + 360_f32) % 360_f32;
+        }
+        // if cmax equal g then compute h
+        else if cmax == g {
+            h = (60_f32 * ((b - r) / diff) + 120_f32) % 360_f32;
+        }
+        // if cmax equal b then compute h
+        else if cmax == b {
+            h = (60_f32 * ((r - g) / diff) + 240_f32) % 360_f32;
+        }
+
+        let s: f32;
+        // if cmax equal zero
+        if cmax == 0_f32 {
+            s = 0_f32;
+        } else {
+            s = (diff / cmax) * 100_f32;
+        }
+
+        // compute v
+        let v = cmax * 100_f32;
+        HSVColor {
+            hue: h as u32,
+            saturation: s as u8,
+            value: v as u8,
         }
     }
 }
@@ -215,6 +292,4 @@ fn get_closest_point_to_point(gamut: ColorGamut, xy_point: ColorCoordinate) -> C
     ColorCoordinate { x: cx, y: cy }
 }
 
-// r = X * 1.656492 - Y * 0.354851 - Z * 0.255038
-// g = -X * 0.707196 + Y * 1.655397 + Z * 0.036152
-// b = X * 0.051713 - Y * 0.121364 + Z * 1.011530
+pub type Palette = HashSet<HSVColor>;
