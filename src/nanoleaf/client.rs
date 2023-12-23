@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use super::types::{BoolValue, Panel, TransitionValue};
 pub struct Nanoleaf {
-    hostname: &'static str,
     base_url: String,
     client: reqwest::Client,
 }
@@ -27,7 +26,6 @@ impl Nanoleaf {
         let client = reqwest::Client::builder().build()?;
         let base_url = format!("{}/api/v1/{}", hostname, api_token);
         Ok(Nanoleaf {
-            hostname,
             client,
             base_url: base_url,
         })
@@ -84,7 +82,7 @@ impl Nanoleaf {
 
         let url = format!("{}/state/brightness", self.base_url);
 
-        let response = self.put(&url, &payload).await?;
+        let _response = self.put(&url, &payload).await?;
 
         Ok(())
     }
