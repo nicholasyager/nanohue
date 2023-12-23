@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::color::{ColorCoordinate, ColorGamut};
@@ -75,4 +77,19 @@ pub struct Group {
     #[serde(rename = "type")]
     pub group_type: String,
     pub action: GroupActions,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum EventData {
+    Variant1(LightState),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Event {
+    #[serde(rename = "type")]
+    pub event_type: String,
+    #[serde(rename = "creationtime")]
+    pub creation_time: String,
+
+    pub data: Vec<serde_json::Value>,
 }

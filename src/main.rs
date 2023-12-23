@@ -26,6 +26,7 @@ struct HueConfig {
     host: String,
     group: String,
     username: String,
+    client_key: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,7 +99,8 @@ async fn main() {
 
     let config = read_config("config.yml").unwrap();
 
-    let hue_client = hue::client::Hue::new(config.hue.host, config.hue.username).unwrap();
+    let hue_client =
+        hue::client::Hue::new(config.hue.host, config.hue.username, config.hue.client_key).unwrap();
 
     let groups = hue_client.groups().await.unwrap();
 
@@ -118,6 +120,14 @@ async fn main() {
 
     loop {
         trace!(target: "nanohue", "Looping");
+
+        let event = hue_client.get_event_stream().await.unwrap();
+
+        println!("{:?}", event);
+
+        // for item in event.data {
+        //     println!("{:?}", item);
+        // }
 
         // // Get all lights, and filter them down to just the ones we care about.
         // let all_lights = hue_client.lights().await.unwrap();
