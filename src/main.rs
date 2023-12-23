@@ -111,14 +111,13 @@ async fn main() {
         on: group.action.on,
         brightness: group.action.brightness,
         dynamic: false,
-        palette: None,
+        palette: Some(get_palette(&hue_client, &group).await),
     };
+
+    trace!(target: "nanohue", "Generated a baseline room. {:?}", room);
 
     loop {
         trace!(target: "nanohue", "Looping");
-
-        let palette = get_palette(&hue_client, &group).await;
-        println!("{:?}", palette);
 
         // // Get all lights, and filter them down to just the ones we care about.
         // let all_lights = hue_client.lights().await.unwrap();
