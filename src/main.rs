@@ -36,6 +36,7 @@ struct HueConfig {
 struct NanoleafConfig {
     host: String,
     token: String,
+    max_brightness: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,7 +78,7 @@ async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &mut Room) {
 
     // Brightness
     let _ = nanoleaf_client
-        .set_brightness(room.brightness.clamp(0.0, 100.0) as u32, 1)
+        .set_brightness(room.get_brightness(), 1)
         .await;
 
     let palette = room.palette.clone();
@@ -202,6 +203,7 @@ async fn main() {
         has_updated: true,
         scene_has_updated: true,
         color_temperature: None,
+        max_brightness: config.nanoleaf.max_brightness,
     };
 
     trace!(target: "nanohue", "Generated a baseline room. {:?}", room);

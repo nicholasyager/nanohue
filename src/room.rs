@@ -11,4 +11,11 @@ pub struct Room {
 
     pub has_updated: bool,
     pub scene_has_updated: bool,
+    pub max_brightness: u8,
+}
+
+impl Room {
+    pub fn get_brightness(&self) -> u32 {
+        self.brightness.clamp(0.0, self.max_brightness as f32) as u32
+    }
 }

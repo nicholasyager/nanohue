@@ -99,7 +99,10 @@ impl Nanoleaf {
         duration: u32,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let payload = BrightnessUpdate {
-            brightness: TransitionValue { value, duration },
+            brightness: TransitionValue {
+                value: if value <= 100 { value } else { 100 },
+                duration,
+            },
         };
 
         trace!(target: "nanoleaf", "Setting the brightness to {} over the next {} seconds.", value, duration);

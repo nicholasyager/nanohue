@@ -182,44 +182,6 @@ impl RGBColor {
             brightness: v as u8,
         }
     }
-
-    pub fn from_color_temperature(color_temperature: u32) -> RGBColor {
-        let ctCentiKelvin = 10000.0 / color_temperature as f32;
-        let r: f32;
-        let g: f32;
-        let b: f32;
-
-        // Red
-        if ctCentiKelvin <= 66.0 {
-            r = 255_f32;
-        } else {
-            r = 329.698727446 * (ctCentiKelvin - 60.0).powf(-0.1332047592);
-        }
-
-        // Green
-        if ctCentiKelvin <= 66.0 {
-            g = 99.4708025861 * ctCentiKelvin.ln() - 161.1195681661;
-        } else {
-            g = 288.1221695283 * (ctCentiKelvin - 60.0).powf(-0.0755148492);
-        }
-
-        // Blue
-        if ctCentiKelvin >= 66.0 {
-            b = 255.0;
-        } else {
-            if ctCentiKelvin <= 19.0 {
-                b = 0.0;
-            } else {
-                b = 138.5177312231 * (ctCentiKelvin - 10.0).ln() - 305.0447927307;
-            }
-        }
-
-        RGBColor {
-            red: r.clamp(0.0, 255.0) as u8,
-            green: g.clamp(0.0, 255.0) as u8,
-            blue: b.clamp(0.0, 255.0) as u8,
-        }
-    }
 }
 
 pub type ColorGamut = [[f32; 2]; 3];
