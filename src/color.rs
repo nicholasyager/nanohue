@@ -8,11 +8,28 @@ pub struct ColorCoordinate {
     y: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+pub struct ColorGamut2 {
+    red: ColorCoordinate,
+    green: ColorCoordinate,
+    blue: ColorCoordinate,
+}
+
+impl ColorGamut2 {
+    fn to_array(&self) -> ColorGamut {
+        [
+            [self.red.x, self.red.y],
+            [self.green.x, self.green.y],
+            [self.blue.x, self.blue.y],
+        ]
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct HSVColor {
     hue: u32,
     saturation: u8,
-    value: u8,
+    brightness: u8,
 }
 
 fn gamma_correction(x: f32) -> f32 {
@@ -58,17 +75,21 @@ pub struct RGBColor {
 }
 
 impl RGBColor {
-    pub fn from_coordinate(color: ColorCoordinate, gamut: ColorGamut, brightness: u8) -> RGBColor {
+    pub fn from_coordinate(
+        color: ColorCoordinate,
+        gamut: ColorGamut2,
+        brightness: f32,
+    ) -> RGBColor {
         let mut xy_point = color;
 
-        if !check_point_in_lamps_reach(xy_point, gamut) {
+        if !check_point_in_lamps_reach(xy_point, gamut.to_array()) {
             // Calculate the closest point on the color gamut triangle
             // and use that as xy value See step 6 of color to xy.
-            xy_point = get_closest_point_to_point(gamut, xy_point);
+            xy_point = get_closest_point_to_point(gamut.to_array(), xy_point);
         }
 
         // Calculate XYZ values Convert using the following formulas:
-        let y = brightness as f32 / 255_f32;
+        let y = brightness / 255_f32;
         let x = (y / xy_point.y) * xy_point.x;
         let z = (y / xy_point.y) * (1_f32 - xy_point.x - xy_point.y);
 
@@ -158,7 +179,7 @@ impl RGBColor {
         HSVColor {
             hue: h as u32,
             saturation: s as u8,
-            value: v as u8,
+            brightness: v as u8,
         }
     }
 }

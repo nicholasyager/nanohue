@@ -1,87 +1,20 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
-use crate::color::{ColorCoordinate, ColorGamut};
+use crate::color::{ColorCoordinate, ColorGamut2};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GroupActions {
-    pub on: bool,
+pub struct EventMessage {
+    pub id: String,
 
-    #[serde(rename = "bri")]
-    pub brightness: u8,
-    hue: u32,
+    pub on: Option<OnStatus>,
+    pub dimming: Option<Dimming>,
+    pub color: Option<Color>,
+    pub status: Option<SceneStatus>,
 
-    #[serde(rename = "sat")]
-    saturation: u8,
-
-    #[serde(rename = "ct")]
-    color_temperature: u16,
-
-    effect: String,
-    xy: ColorCoordinate,
-
-    alert: String,
-
-    #[serde(rename = "colormode")]
-    color_mode: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LightState {
-    on: bool,
-
-    #[serde(rename = "bri")]
-    pub brightness: u8,
-    hue: Option<u32>,
-
-    #[serde(rename = "sat")]
-    saturation: Option<u8>,
-
-    #[serde(rename = "ct")]
-    color_temperature: Option<u16>,
-
-    effect: Option<String>,
-    pub xy: Option<ColorCoordinate>,
-
-    alert: String,
-
-    #[serde(rename = "colormode")]
-    color_mode: Option<String>,
-
-    reachable: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LightControl {
-    #[serde(rename = "colorgamut")]
-    pub color_gamut: Option<ColorGamut>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LightCapabilities {
-    pub control: LightControl,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Light {
-    pub name: String,
-    pub state: LightState,
-    pub capabilities: LightCapabilities,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Group {
-    pub name: String,
-    pub lights: Vec<String>,
+    pub owner: Option<Resource>,
 
     #[serde(rename = "type")]
-    pub group_type: String,
-    pub action: GroupActions,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-enum EventData {
-    Variant1(LightState),
+    pub message_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,5 +24,115 @@ pub struct Event {
     #[serde(rename = "creationtime")]
     pub creation_time: String,
 
-    pub data: Vec<serde_json::Value>,
+    pub data: Vec<EventMessage>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Resource {
+    #[serde(rename = "rid")]
+    pub id: String,
+    #[serde(rename = "rtype")]
+    pub resource_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RoomMetadata {
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Room {
+    pub id: String,
+    pub children: Vec<Resource>,
+    pub services: Vec<Resource>,
+    pub metadata: RoomMetadata,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HueResponse<T>
+where
+    T: Serialize,
+{
+    pub data: Vec<T>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SceneStatus {
+    pub active: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OnStatus {
+    pub on: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Dimming {
+    pub brightness: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupedLight {
+    pub id: String,
+    pub on: OnStatus,
+    pub dimming: Dimming,
+}
+
+// Lighting
+
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+pub struct Color {
+    pub xy: ColorCoordinate,
+    pub gamut: Option<ColorGamut2>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Dynamics {
+    pub status: String,
+    pub status_values: Vec<String>,
+    pub speed: f32,
+    pub speed_valid: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Light {
+    pub id: String,
+    pub owner: Resource,
+    pub on: OnStatus,
+    pub dimming: Dimming,
+    pub color: Option<Color>,
+    pub dynamics: Dynamics,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ScenePaletteColor {
+    pub color: Color,
+    pub dimming: Dimming,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ScenePalette {
+    pub color: Vec<ScenePaletteColor>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Action {
+    pub on: OnStatus,
+    pub dimming: Dimming,
+    pub color: Color,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SceneAction {
+    pub target: Resource,
+    pub action: Action,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Scene {
+    pub id: String,
+    pub group: Resource,
+    pub palette: ScenePalette,
+    pub status: SceneStatus,
+    pub actions: Vec<SceneAction>,
 }

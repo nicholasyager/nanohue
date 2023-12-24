@@ -1,55 +1,37 @@
-use std::collections::HashMap;
-
 use log::trace;
-use reqwest::{header::HeaderMap, Response};
+use reqwest::Response;
 
-use super::types::{Event, Group, Light};
+use super::types::{Event, GroupedLight, HueResponse, Light, Room, Scene};
 
 pub struct Hue {
     // username: String,
     client_key: String,
-    v1_url: String,
     v2_url: String,
     client: reqwest::Client,
 }
 
 impl Hue {
-    pub fn new(
-        hostname: String,
-        username: String,
-        client_key: String,
-    ) -> Result<Hue, reqwest::Error> {
+    pub fn new(hostname: String, username: String) -> Result<Hue, reqwest::Error> {
         let client = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
             .build()?;
-        let v1_url = format!("http://{}/api/{}", hostname, username);
+
         let v2_url = format!("https://{}", hostname);
         Ok(Hue {
             // username,
             client_key: username,
             client,
-            v1_url,
             v2_url,
         })
     }
 
     async fn get(&self, url: &str) -> Result<Response, Box<dyn std::error::Error>> {
-        let response = self
-            .client
-            .get(url)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .send()
-            .await?;
         trace!(
             target: "hue",
-            "Hue responded with a status code of {:?}",
-            response.status().to_string()
+            "GET {:?}",
+            url
         );
 
-        Ok(response)
-    }
-
-    async fn get_v2(&self, url: &str) -> Result<Response, Box<dyn std::error::Error>> {
         let response = self
             .client
             .get(url)
@@ -66,27 +48,56 @@ impl Hue {
         Ok(response)
     }
 
-    pub async fn groups(&self) -> Result<HashMap<String, Group>, Box<dyn std::error::Error>> {
-        let url = format!("{}/groups", self.v1_url);
+    pub async fn rooms(&self) -> Result<Vec<Room>, Box<dyn std::error::Error>> {
+        let url = format!("{}/clip/v2/resource/room", self.v2_url);
         let response = self.get(&url).await?;
-        let json_response: HashMap<String, Group> =
-            response.json::<HashMap<String, Group>>().await?;
+        let json_response: HueResponse<Room> = response.json::<HueResponse<Room>>().await?;
 
-        Ok(json_response)
+        Ok(json_response.data)
     }
 
-    pub async fn lights(&self) -> Result<HashMap<String, Light>, Box<dyn std::error::Error>> {
-        let url = format!("{}/lights", self.v1_url);
+    pub async fn group(&self, id: &str) -> Result<GroupedLight, Box<dyn std::error::Error>> {
+        let url: String = format!("{}/clip/v2/resource/grouped_light/{}", self.v2_url, id);
         let response = self.get(&url).await?;
-        let json_response: HashMap<String, Light> =
-            response.json::<HashMap<String, Light>>().await?;
+        let json_response: HueResponse<GroupedLight> =
+            response.json::<HueResponse<GroupedLight>>().await?;
 
-        Ok(json_response)
+        let item = json_response.data.iter().nth(0).unwrap();
+
+        Ok(item.clone())
+    }
+
+    pub async fn lights(&self) -> Result<Vec<Light>, Box<dyn std::error::Error>> {
+        let url = format!("{}/clip/v2/resource/light", self.v2_url);
+        let response = self.get(&url).await?;
+        let json_response: HueResponse<Light> = response.json::<HueResponse<Light>>().await?;
+
+        Ok(json_response.data.clone())
+    }
+
+    pub async fn light(&self, id: &str) -> Result<Light, Box<dyn std::error::Error>> {
+        let url: String = format!("{}/clip/v2/resource/light/{}", self.v2_url, id);
+        let response = self.get(&url).await?;
+        let json_response: HueResponse<Light> = response.json::<HueResponse<Light>>().await?;
+
+        let item = json_response.data.iter().nth(0).unwrap();
+
+        Ok(item.clone())
+    }
+
+    pub async fn scene(&self, id: &str) -> Result<Scene, Box<dyn std::error::Error>> {
+        let url: String = format!("{}/clip/v2/resource/scene/{}", self.v2_url, id);
+        let response = self.get(&url).await?;
+        let json_response: HueResponse<Scene> = response.json::<HueResponse<Scene>>().await?;
+
+        let item = json_response.data.iter().nth(0).unwrap();
+
+        Ok(item.clone())
     }
 
     pub async fn get_event_stream(&self) -> Result<Vec<Event>, Box<dyn std::error::Error>> {
         let url = format!("{}/eventstream/clip/v2", self.v2_url);
-        let response = self.get_v2(&url).await?;
+        let response = self.get(&url).await?;
 
         let json_response = response.json::<Vec<Event>>().await?;
 

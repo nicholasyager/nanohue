@@ -2,7 +2,7 @@ use log::trace;
 use reqwest::Response;
 use serde::{Deserialize, Serialize};
 
-use super::types::{BoolValue, Panel, TransitionValue};
+use super::types::{BoolValue, Effect, Panel, TransitionValue};
 pub struct Nanoleaf {
     base_url: String,
     client: reqwest::Client,
@@ -18,13 +18,20 @@ struct BrightnessUpdate {
     brightness: TransitionValue,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct EffectUpdate {
+    write: Effect,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct EffectSelect {
+    select: String,
+}
+
 impl Nanoleaf {
-    pub fn new(
-        hostname: &'static str,
-        api_token: &'static str,
-    ) -> Result<Nanoleaf, reqwest::Error> {
+    pub fn new(hostname: String, api_token: String) -> Result<Nanoleaf, reqwest::Error> {
         let client = reqwest::Client::builder().build()?;
-        let base_url = format!("{}/api/v1/{}", hostname, api_token);
+        let base_url = format!("http://{}:16021/api/v1/{}", hostname, api_token);
         Ok(Nanoleaf {
             client,
             base_url: base_url,
@@ -36,13 +43,17 @@ impl Nanoleaf {
         T: Serialize,
     {
         let body = serde_json::to_string(payload)?;
+        trace!(target: "nanoleaf", "Creating PUT payload: {:?}", body);
         let response = self
             .client
             .put(url)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .body(body)
             .send()
-            .await?;
+            .await
+            .map_err(|err| panic!("Failed to get result. {:?}", err))
+            .unwrap();
+
         trace!(
             target: "nanoleaf",
             "Nanoleaf responded with a status code of {:?}",
@@ -52,6 +63,7 @@ impl Nanoleaf {
         Ok(response)
     }
 
+    #[allow(unused)]
     pub async fn get_panel(&self) -> Result<Panel, reqwest::Error> {
         let response = self.client.get(&(self.base_url)).send().await?;
 
@@ -80,7 +92,21 @@ impl Nanoleaf {
             brightness: TransitionValue { value, duration },
         };
 
+        trace!(target: "nanoleaf", "Setting the brightness to {} over the next {} seconds.", value, duration);
         let url = format!("{}/state/brightness", self.base_url);
+
+        let _response = self.put(&url, &payload).await?;
+
+        Ok(())
+    }
+
+    pub async fn write_effect(&self, effect: Effect) -> Result<(), Box<dyn std::error::Error>> {
+        // Write an effect to the Nanoleaf, and set it as the active effect.
+
+        trace!(target: "nanoleaf", "Writing effect {:?}.", effect);
+        let url = format!("{}/effects", self.base_url);
+
+        let payload = EffectUpdate { write: effect };
 
         let _response = self.put(&url, &payload).await?;
 
