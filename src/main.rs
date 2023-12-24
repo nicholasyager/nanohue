@@ -80,42 +80,51 @@ async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &mut Room) {
         .set_brightness(room.brightness.clamp(0.0, 100.0) as u32, 1)
         .await;
 
-    let palette = room.palette.clone().unwrap();
+    let palette = room.palette.clone();
     room.has_updated = false;
     // Effect
 
     if room.scene_has_updated {
-        let animation_type = if room.dynamic {
-            String::from_str("random").unwrap()
-        } else {
-            String::from_str("flow").unwrap()
-        };
+        match palette {
+            Some(palette) => {
+                let animation_type = if room.dynamic {
+                    String::from_str("random").unwrap()
+                } else {
+                    String::from_str("flow").unwrap()
+                };
 
-        let effect = Effect {
-            command: String::from_str("display").unwrap(),
-            animation_name: String::from_str("hue").unwrap(),
-            color_type: String::from_str("HSB").unwrap(),
-            animation_data: None,
-            brightness_range: Range {
-                min: 25,
-                max: room.brightness.clamp(0.0, 100.0) as u32,
-            },
-            loop_animation: true,
-            animation_type: animation_type,
-            transition_time: if room.dynamic {
-                Range { min: 15, max: 30 }
-            } else {
-                Range { min: 30, max: 60 }
-            },
-            delay_time: if room.dynamic {
-                Range { min: 30, max: 60 }
-            } else {
-                Range { min: 60, max: 90 }
-            },
-            palette: palette.iter().cloned().collect::<Vec<HSVColor>>(),
-        };
+                let effect = Effect {
+                    command: String::from_str("display").unwrap(),
+                    animation_name: String::from_str("hue").unwrap(),
+                    color_type: String::from_str("HSB").unwrap(),
+                    animation_data: None,
+                    brightness_range: Range {
+                        min: 25,
+                        max: room.brightness.clamp(0.0, 100.0) as u32,
+                    },
+                    loop_animation: true,
+                    animation_type: animation_type,
+                    transition_time: if room.dynamic {
+                        Range { min: 15, max: 30 }
+                    } else {
+                        Range { min: 30, max: 60 }
+                    },
+                    delay_time: if room.dynamic {
+                        Range { min: 30, max: 60 }
+                    } else {
+                        Range { min: 60, max: 90 }
+                    },
+                    palette: palette.iter().cloned().collect::<Vec<HSVColor>>(),
+                };
 
-        let _ = nanoleaf_client.write_effect(effect.clone()).await;
+                let _ = nanoleaf_client.write_effect(effect.clone()).await;
+            }
+            None => {
+                let color_temp = 1000000_u32 / room.color_temperature.unwrap();
+                let _ = nanoleaf_client.set_color_temperature(color_temp).await;
+            }
+        }
+
         // let _ = nanoleaf_client.set_effect(effect.animation_name).await;
         room.scene_has_updated = false;
     };
@@ -176,8 +185,7 @@ async fn main() {
     let group = hue_client.group(&group_resource.id).await.unwrap();
     trace!(
             target: "nanohue",
-            "Found the room's grouped light. {:?}",
-            group
+            "Found the room's grouped light. {:?}", group
     );
 
     let all_lights = hue_client.lights().await.unwrap();
@@ -193,6 +201,7 @@ async fn main() {
         palette: Some(get_palette(&lights).await),
         has_updated: true,
         scene_has_updated: true,
+        color_temperature: None,
     };
 
     trace!(target: "nanohue", "Generated a baseline room. {:?}", room);
@@ -251,16 +260,31 @@ async fn main() {
                 for action in scene.actions {
                     let light = hue_client.light(&action.target.id).await.unwrap();
 
-                    let color = RGBColor::from_coordinate(
-                        action.action.color.xy,
-                        light.color.unwrap().gamut.unwrap(),
-                        action.action.dimming.brightness,
-                    );
-                    palette.insert(color.to_hsv());
+                    match action.action.color {
+                        Some(color) => {
+                            let color = RGBColor::from_coordinate(
+                                color.xy,
+                                light.color.unwrap().gamut.unwrap(),
+                                action.action.dimming.brightness,
+                            );
+                            palette.insert(color.to_hsv());
+                        }
+                        None => match action.action.color_temperature {
+                            Some(color_temperature) => {
+                                room.color_temperature = Some(color_temperature.mirek);
+                            }
+                            None => {}
+                        },
+                    }
                 }
 
                 room.dynamic = scene.status.active == "dynamic_palette";
-                room.palette = Some(palette);
+                if palette.len() > 0 {
+                    room.palette = Some(palette);
+                } else {
+                    room.palette = None;
+                }
+
                 room.scene_has_updated = true;
                 room.has_updated = true;
             }

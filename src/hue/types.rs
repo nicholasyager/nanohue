@@ -116,10 +116,16 @@ pub struct ScenePalette {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ColorTemperature {
+    pub mirek: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Action {
     pub on: OnStatus,
     pub dimming: Dimming,
-    pub color: Color,
+    pub color: Option<Color>,
+    pub color_temperature: Option<ColorTemperature>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

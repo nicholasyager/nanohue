@@ -7,6 +7,8 @@ pub struct Room {
     pub dynamic: bool,
 
     pub palette: Option<Palette>,
+    pub color_temperature: Option<u32>,
+
     pub has_updated: bool,
     pub scene_has_updated: bool,
 }

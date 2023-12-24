@@ -14,8 +14,18 @@ struct PowerUpdate {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct Value<T> {
+    value: T,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct BrightnessUpdate {
     brightness: TransitionValue,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ColorTemperatureUpdate {
+    ct: Value<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -94,6 +104,25 @@ impl Nanoleaf {
 
         trace!(target: "nanoleaf", "Setting the brightness to {} over the next {} seconds.", value, duration);
         let url = format!("{}/state/brightness", self.base_url);
+
+        let _response = self.put(&url, &payload).await?;
+
+        Ok(())
+    }
+
+    pub async fn set_color_temperature(
+        &self,
+        value: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        assert!(value >= 1200);
+        assert!(value <= 6500);
+
+        let payload = ColorTemperatureUpdate {
+            ct: Value::<u32> { value },
+        };
+
+        trace!(target: "nanoleaf", "Setting the color temperature to {}.", value);
+        let url = format!("{}/state/ct", self.base_url);
 
         let _response = self.put(&url, &payload).await?;
 
