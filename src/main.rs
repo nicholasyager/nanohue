@@ -76,6 +76,10 @@ async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &mut Room) {
     // On State
     let _ = nanoleaf_client.set_power(room.on).await;
 
+    if !room.on {
+        return;
+    }
+
     // Brightness
     let _ = nanoleaf_client
         .set_brightness(room.get_brightness(), 1)
