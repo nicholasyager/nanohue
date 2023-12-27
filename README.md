@@ -7,7 +7,7 @@ A rust-based tool to mirror Philips Hue scenes to a Nanoleaf device.
 1. Build the docker container.
 
 ```console
-docker build . -t nanoue
+docker build . -t nanohue
 ```
 
 2. Create a configuration file. For this, you will need to know the IP addresses for both your Hue bridge and the Nanoleaf device, as well as the API tokens for both.
