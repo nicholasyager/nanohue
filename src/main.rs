@@ -70,8 +70,11 @@ async fn get_palette(lights: &Vec<Light>) -> Palette {
     palette
 }
 
-async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &mut Room) {
+async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &Room) {
     // Write the room state to the nanoleaf
+    if !room.has_updated && !room.scene_has_updated {
+        return;
+    }
 
     // On State
     let _ = nanoleaf_client.set_power(room.on).await;
@@ -86,7 +89,7 @@ async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &mut Room) {
         .await;
 
     let palette = room.palette.clone();
-    room.has_updated = false;
+
     // Effect
 
     if room.scene_has_updated {
@@ -131,7 +134,6 @@ async fn write_room_to_nanoleaf(nanoleaf_client: &Nanoleaf, room: &mut Room) {
         }
 
         // let _ = nanoleaf_client.set_effect(effect.animation_name).await;
-        room.scene_has_updated = false;
     };
 }
 
@@ -231,6 +233,13 @@ async fn main() {
             }
 
             if message_type == "grouped_light" {
+                // It's a grouped light! confirm that it's the right ID.
+                if item.id != group.id {
+                    trace!(target: "nanohue", "Message pertains to a different group. Skipping.");
+                    continue;
+                }
+                trace!(target: "nanohue", "Message pertains to the group. {:?}.", item);
+
                 // Check if the on status has changed, and if so, write it to the room.
                 match &item.on {
                     Some(on) => {
@@ -299,7 +308,9 @@ async fn main() {
         }
 
         if room.has_updated {
-            write_room_to_nanoleaf(&nanoleaf, &mut room).await;
+            write_room_to_nanoleaf(&nanoleaf, &room).await;
+            room.has_updated = false;
+            room.scene_has_updated = false;
         }
 
         // Pause briefly to prevent overloading the nanoleaf.
